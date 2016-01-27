@@ -9,6 +9,7 @@ import codecs
 import json
 from datetime import datetime
 from urlparse import urlparse
+import m1905.download as download
 
 
 class JsonFileWriter:
@@ -36,15 +37,20 @@ class JsonWithEncodingPipeline(object):
         self.video_json = JsonFileWriter('movies_with_video_' + now + '.json')
         self.domains = []
         self.count = 0
+        self.video_count = 0
+        self.downloader = download.Downloader()
 
     def process_item(self, item, spider):
         self.count += 1
         if self.count % 30 == 0:
             print 'Done %d films' % self.count
+        item['id'] = self.count
         line = json.dumps(dict(item), ensure_ascii=False)
         if 'videoURL' in item:
             self.video_json.write(line)
             domain = urlparse(item['videoURL']).netloc
+            self.downloader.download(item['title'], item['videoURL'], self.count)
+            self.video_count += 1
             if domain not in self.domains:
                 self.domains.append(domain)
         else:
@@ -52,7 +58,7 @@ class JsonWithEncodingPipeline(object):
         return item
 
     def close_spider(self, spider):
-        print 'Total: %d films' % self.count
+        print 'Total: %d films, %d of which contain videos' % (self.count, self.video_count)
         self.no_video_json.close()
         self.video_json.close()
         file = codecs.open('domains.txt', 'w', encoding='utf-8')

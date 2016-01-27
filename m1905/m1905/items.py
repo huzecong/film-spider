@@ -9,6 +9,7 @@ import scrapy
 
 
 class M1905FilmItem(scrapy.Item):
+    id = scrapy.Field()
     link = scrapy.Field()
 
     title = scrapy.Field()

@@ -13,11 +13,11 @@ class M1905ListSpider(scrapy.Spider):
     def __init__(self, **kwargs):
         super(M1905ListSpider, self).__init__(**kwargs)
         # total_movies = 316770
-        total_movies = 100
+        total_movies = 300
         movies_per_page = 30
         total_pages = (total_movies + movies_per_page - 1) // movies_per_page
-        # self.start_urls = [("http://www.1905.com/mdb/film/list/o0d0p%d.html" % x) for x in xrange(1, total_pages + 1)]
-        self.start_urls = [("http://www.1905.com/mdb/film/list/o0d1p%d.html" % x) for x in xrange(1, total_pages + 1)]
+        self.start_urls = [("http://www.1905.com/mdb/film/list/o0d0p%d.html" % x) for x in xrange(1, total_pages + 1)]
+        # self.start_urls = [("http://www.1905.com/mdb/film/list/o0d1p%d.html" % x) for x in xrange(1, total_pages + 1)]
 
     def handler(self, request):
         print request.url

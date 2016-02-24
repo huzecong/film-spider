@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for m1905 project
+# Scrapy settings for movies project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,14 +9,14 @@
 #     http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'm1905'
+BOT_NAME = 'movies'
 
-SPIDER_MODULES = ['m1905.spiders']
-NEWSPIDER_MODULE = 'm1905.spiders'
+SPIDER_MODULES = ['movies.spiders']
+NEWSPIDER_MODULE = 'movies.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'm1905 (+http://www.yourdomain.com)'
+#USER_AGENT = 'movies (+http://www.yourdomain.com)'
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS=32
@@ -44,7 +44,7 @@ NEWSPIDER_MODULE = 'm1905.spiders'
 # Enable or disable spider middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'm1905.middlewares.MyCustomSpiderMiddleware': 543,
+#    'movies.middlewares.MyCustomSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
@@ -62,7 +62,7 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'm1905.pipelines.JsonWithEncodingPipeline': 300,
+    'movies.pipelines.JsonWithEncodingPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

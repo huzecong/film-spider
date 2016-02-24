@@ -9,7 +9,7 @@ import codecs
 import json
 from datetime import datetime
 from urlparse import urlparse
-import m1905.download as download
+import movies.download as download
 
 
 class JsonFileWriter:

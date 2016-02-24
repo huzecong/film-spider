@@ -3,10 +3,10 @@ import scrapy
 import subprocess
 import urllib
 
-from m1905.items import M1905FilmItem
+from movies.items import M1905FilmItem
 
 
-class M1905ListSpider(scrapy.Spider):
+class YoukuListSpider(scrapy.Spider):
     name = "m1905"
     allowed_domains = ["1905.com"]
 

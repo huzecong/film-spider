@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 import scrapy
-import subprocess
-import urllib
 
 from movies.items import M1905FilmItem
 
@@ -11,7 +9,7 @@ class M1905Spider(scrapy.Spider):
     allowed_domains = ["1905.com"]
 
     def __init__(self, **kwargs):
-        super(M1905ListSpider, self).__init__(**kwargs)
+        super(M1905Spider, self).__init__(**kwargs)
         # total_movies = 316770
         total_movies = 300
         movies_per_page = 30

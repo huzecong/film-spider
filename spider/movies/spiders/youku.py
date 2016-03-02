@@ -2,6 +2,7 @@
 import scrapy
 
 from movies.items import YoukuFilmItem
+from movies.output import writeln, color
 
 
 class YoukuListSpider(scrapy.Spider):
@@ -12,11 +13,8 @@ class YoukuListSpider(scrapy.Spider):
         super(YoukuListSpider, self).__init__(**kwargs)
         self.start_urls = ['http://www.youku.com/v_olist/c_96.html']
 
-    def handler(self, request):
-        print request.url
-
     def parse(self, response):
-        print "Parsing url:", response.url
+        writeln('[' + color('INFO', 'blue') + '] Parsing link: ' + response.url)
 
         films = response.xpath('//div[@id="listofficial"]/descendant::div[contains(@class, "yk-col3")]')
         for film in films:
@@ -70,6 +68,6 @@ class YoukuListSpider(scrapy.Spider):
         if button:
             item['videoURL'] = button.xpath('@href')[0].extract()
         else:
-            print 'no video', item['title']
+            writeln('[' + color('IGNORE', 'magenta') + '] ' + item['title'] + ' has no video link.')
 
         yield item

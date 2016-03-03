@@ -20,6 +20,7 @@ cd film-spider/spider
 scrapy crawl youku -L ERROR # crawl for Youku
 scrapy crawl m1905 -L ERROR # crawl for M1905
 ```
+If you wish to terminate crawling, press `Ctrl + \` instead of `Ctrl + C`, as the latter may not work sometimes.
 
 ## Preferences
 
@@ -81,3 +82,11 @@ If `videoURL` exists for a film, its worst-quality version is downloaded using `
 
 - Youku video parts are not concatenated.
 - When downloading long videos on Youku, only a part could be downloaded. This issue is due to `youtube-dl` incompetence and I currently can do nothing about it.
+
+## Reimplement details
+
+Due to incompetence of `youtube-dl`, you are encouraged to reimplement the `download.py` part using other tools of parsing/downloading. You need to reimplement the following two methods:
+- `Downloader.start_download(self, dic)`: This method is called when a new download job is about to start. Your implementation should use an asynchronous downloader. Dictionary `dic` contains 3 keys: `name`, `url` and `id`.
+- `Downloader.download_progress(self, id, dic)`: This method is called by `youtube-dl` as progress reporter. When download is complete or aborted due to errors, you should also invoke this method (usually from `start_download` method). Dictionary `dic` should contain key `status`, with values among `downloading`, `finished`, `complete` and `error`, the last two corresponding to download complete and aborted.
+
+For further info please kindly delve into the code :)

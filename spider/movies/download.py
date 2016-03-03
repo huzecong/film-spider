@@ -1,4 +1,5 @@
 import os
+import time
 from functools import partial
 from multiprocessing import Manager, Lock, Value
 from threading import Timer
@@ -33,21 +34,23 @@ class Downloader:
         Timer(0.5, self.print_daemon).start()
 
     options = {
-        'format': 'worst',
-        'logger': DownloadLogger()
+        'format': 'flv',
+        'logger': DownloadLogger(),
     }
 
     def start_download(self, dic):
-        writeln('[' + color('DOWN', 'cyan') + '] Starting download of ' + dic['name'] +
-                ', saving as ID %d' % dic['id'])
+        writeln('[' + color('DOWN', 'cyan') + '] Starting download of %s from %s, saving as ID %d'
+                % (dic['name'], dic['url'], dic['id']))
         cur_option = self.options
         cur_option['progress_hooks'] = [partial(self.download_progress, dic['id'])]
         cur_option['outtmpl'] = 'video/' + str(dic['id']) + '/' + str(dic['id']) + r'.%(title)s-%(id)s.%(ext)s'
         downloader = youtube_dl.YoutubeDL(cur_option)
         try:
             downloader.download([dic['url']])
+            self.download_progress(dic['id'], {'status': 'complete'})
         except youtube_dl.DownloadError as e:
-            writeln('[' + color('ERROR', 'red') + '] youtube_dl error: ' + e.message)
+            writeln('[' + color('ERROR', 'red') + '] youtube_dl error for %s: ' % dic['name'] + e.message)
+            self.download_progress(dic['id'], {'status': 'error'})
 
     def print_progress(self):
         self.print_lock.acquire()
@@ -55,7 +58,7 @@ class Downloader:
         down_cnt, all_cnt = len(self.downloading), len(self.queue)
         if down_cnt == 0:
             return
-        index = 0
+
         with self.index.get_lock():
             index = self.index.value
             if index >= down_cnt:
@@ -69,7 +72,7 @@ class Downloader:
         message += color('Job %d/%d' % (index + 1, down_cnt), 'green')
         if all_cnt > down_cnt:
             message += color(' (%d pending)' % (all_cnt - down_cnt), 'green')
-        message += color(': ' + dic['name'], 'green')
+        message += color(': ' + dic['name'] + '  Part %d' % (dic['done_part'] + 1), 'green')
 
         total, down = dic.get('total_bytes', None), dic.get('downloaded_bytes', None)
         if total is not None and down is not None:
@@ -101,46 +104,75 @@ class Downloader:
 
         self.print_lock.release()
 
+    REFRESH_TIME = 1
+
     def print_daemon(self):
         if len(self.downloading) > 0:
             with self.index.get_lock():
                 self.index.value += 1
             self.print_progress()
 
-        Timer(2, self.print_daemon).start()
+        Timer(self.REFRESH_TIME, self.print_daemon).start()
 
     def download_progress(self, id, dic):
+        self.print_lock.acquire()
+
         try:
             name = self.queue[id]['name']
+            done_part = self.queue[id]['done_part']
         except KeyError:
+            print 'KeyError'
+            self.print_lock.release()
             return
 
         if self.queue[id]['status'] == 'none':
             self.downloading.append(id)
 
-        if dic['status'] == 'finished':
-            message = 'Finished downloading %s. File saved to %s' % (name, dic['filename'])
-            down = dic.get('downloaded_bytes', -1)
-            if down != -1:
+        dic['name'] = name
+        dic['time'] = time.time()
+        if dic['status'] in ['complete', 'error']:
+            if dic['status'] == 'complete':
+                message = 'All %d parts of %s downloaded' % (done_part, name)
+                writeln(color('[DONE] ' + message, 'green'))
+            else:
+                message = 'Download of %s aborted due to error' % name
+                writeln(color('[ABORT] ' + message, 'red'))
+            self.downloading.remove(id)
+            self.queue.pop(id)
+
+        elif dic['status'] == 'finished':
+            dic['done_part'] = done_part + 1
+            message = 'Finished downloading part %d of %s. File saved to %s' \
+                      % (dic['done_part'], name, dic['filename'])
+            # message = 'Finished downloading part %d/%d of %s. File saved to %s' \
+            #           % (dic['fragment_index'], dic['fragment_count'], name, dic['filename'])
+
+            down = dic.get('downloaded_bytes', None)
+            if down is not None:
                 message += ', size is %.1lfMB' % (float(down) / (10 ** 6))
             writeln('[' + color('DOWN', 'green') + '] ' + message)
-            self.queue.pop(id)
-            self.downloading.remove(id)
+            self.queue[id] = dic
+
         elif dic['status'] == 'downloading':
+            dic['done_part'] = done_part
             total = 0
             for x in ['total_bytes', 'total_bytes_estimate']:
                 if dic[x] is not None:
                     total = dic[x]
                     break
             dic['total_bytes'] = total
-            dic['name'] = name
             self.queue[id] = dic
 
-        self.print_progress()
+        self.print_lock.release()
+
+        if dic['status'] == 'finished':
+            self.print_progress()
 
     def download(self, name, url, id):
         self.queue[id] = {
             'name': name,
-            'status': 'none'
+            'status': 'none',
+            'time': time.time(),
+            'done_part': 0,
         }
         self.multi.add({'name': name, 'url': url, 'id': id})

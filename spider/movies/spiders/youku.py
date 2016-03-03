@@ -69,6 +69,6 @@ class YoukuListSpider(scrapy.Spider):
         if button:
             item['videoURL'] = button.xpath('@href')[0].extract()
         else:
-            writeln('[' + color('IGNORE', 'magenta') + '] ' + item['title'] + ' has no video link.')
+            writeln('[' + color('IGNORE', 'magenta') + '] ' + item['title'] + ' has no video link')
 
         yield item

@@ -1,4 +1,4 @@
-from multiprocessing import Lock
+from multiprocessing import Lock, Manager
 from sys import stdout
 
 
@@ -16,16 +16,16 @@ class Output:
         'grey': '\033[37m'
     }
 
-    last_refresh = ''
-
     lock = Lock()
+    manager = Manager()
+    last_refresh = ''
 
     @staticmethod
     def refresh(s):
         Output.lock.acquire()
+        Output.last_refresh = s
         stdout.write(Output.CLEAR_LINE + s)
         stdout.flush()
-        Output.last_refresh = s
         Output.lock.release()
 
     @staticmethod
@@ -41,7 +41,7 @@ class Output:
 
     @staticmethod
     def length(s):
-        ret = len(s)
+        ret = len(s.encode('utf-8'))
         ret -= 9 * (s.count('\033') // 2)
         return ret
 

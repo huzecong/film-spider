@@ -1,10 +1,12 @@
-from .multi_queue import MultitaskQueue
-from .output import refresh, writeln, color
-from functools import partial
-import youtube_dl
-from threading import Timer
 import os
-import time
+from functools import partial
+from multiprocessing import Manager, Lock, Value
+from threading import Timer
+
+import youtube_dl
+
+from .multi_queue import MultitaskQueue
+from .output import refresh, writeln, color, length
 
 
 class DownloadLogger(object):
@@ -20,78 +22,92 @@ class DownloadLogger(object):
 
 class Downloader:
     def __init__(self):
-        self.queue = {}
-        self.downloading = []
+        self.manager = Manager()
+        self.queue = self.manager.dict()
+        self.downloading = self.manager.list()
+        self.index = Value('i', 0)
+        self.print_lock = Lock()
+
         self.multi = MultitaskQueue(self.start_download)
         self.status = 0
-        Timer(0.5, self.print_progress).start()
+        Timer(0.5, self.print_daemon).start()
 
     options = {
-        # 'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]',
         'format': 'worst',
         'logger': DownloadLogger()
     }
 
-    running = False
-
     def start_download(self, dic):
-        writeln('[' + color('INFO', 'blue') + '] Starting download of ' + dic['name']
-                + ', saving as ID %d' % dic['id'])
+        writeln('[' + color('DOWN', 'cyan') + '] Starting download of ' + dic['name'] +
+                ', saving as ID %d' % dic['id'])
         cur_option = self.options
         cur_option['progress_hooks'] = [partial(self.download_progress, dic['id'])]
-        cur_option['outtmpl'] = 'video/' + str(dic['id']) + '/' + str(dic['id']) + r'.%(ext)s'
+        cur_option['outtmpl'] = 'video/' + str(dic['id']) + '/' + str(dic['id']) + r'.%(title)s-%(id)s.%(ext)s'
         downloader = youtube_dl.YoutubeDL(cur_option)
         try:
             downloader.download([dic['url']])
         except youtube_dl.DownloadError as e:
             writeln('[' + color('ERROR', 'red') + '] youtube_dl error: ' + e.message)
 
-    _last_index = 0
-
     def print_progress(self):
-        def _print_progress(index):
-            rows, columns = map(int, os.popen('stty size', 'r').read().split())
-            down_cnt, all_cnt = len(self.downloading), len(self.queue)
+        self.print_lock.acquire()
+
+        down_cnt, all_cnt = len(self.downloading), len(self.queue)
+        if down_cnt == 0:
+            return
+        index = 0
+        with self.index.get_lock():
+            index = self.index.value
             if index >= down_cnt:
+                self.index.value = 0
                 index = 0
 
-            dic = self.queue[self.downloading[index]]
-            message = ''
-            message += 'Job %d/%d' % (index + 1, down_cnt)
-            if all_cnt > down_cnt:
-                message += ' (%d pending)' % (all_cnt - down_cnt)
-            message += ': ' + dic['name']
+        rows, columns = map(int, os.popen('stty size', 'r').read().split())
 
-            eta = dic.get('eta', -1)
-            if eta != -1:
-                message += ' ETA: %ds' % eta
-            speed = dic.get('speed', -1)
-            if speed != -1:
-                units = [('MB/s', 10 ** 6), ('KB/s', 10 ** 3)]
-                unit = ('B/s', 1)
-                for x in units:
-                    if speed > x[1]:
-                        unit = x
-                        break
-                message += ' Speed: %.1lf%s' % (speed / unit[1], unit[0])
+        dic = self.queue[self.downloading[index]]
+        message = ''
+        message += color('Job %d/%d' % (index + 1, down_cnt), 'green')
+        if all_cnt > down_cnt:
+            message += color(' (%d pending)' % (all_cnt - down_cnt), 'green')
+        message += color(': ' + dic['name'], 'green')
 
-            total, down = dic.get('total_bytes', -1), dic.get('downloaded_bytes', -1)
-            if total != -1 and down != -1:
-                message += ' Progress: %6.2lf%%' % (float(down) * 100 / float(total))
+        total, down = dic.get('total_bytes', None), dic.get('downloaded_bytes', None)
+        if total is not None and down is not None:
+            submessage = ' %6.2lf%%' % (float(down) * 100 / float(total))
+            if length(message) + length(submessage) <= columns:
+                message += submessage
 
-            length = columns - len(message)
+        eta = dic.get('eta', None)
+        if eta is not None:
+            submessage = color('   ETA:', 'cyan') + ' %ds' % eta
+            if length(message) + length(submessage) <= columns:
+                message += submessage
 
-            refresh(message)
-            print message
+        speed = dic.get('speed', None)
+        if speed is not None:
+            units = [('MB/s', 10 ** 6), ('KB/s', 10 ** 3)]
+            unit = ('B/s', 1)
+            for x in units:
+                if speed > x[1]:
+                    unit = x
+                    break
+            submessage = color('   Speed:', 'cyan') + ' %.1lf%s' % (speed / unit[1], unit[0])
+            if length(message) + length(submessage) <= columns:
+                message += submessage
 
+        remain = columns - length(message)
+
+        refresh(message)
+
+        self.print_lock.release()
+
+    def print_daemon(self):
         if len(self.downloading) > 0:
-            _print_progress(self._last_index)
-            self._last_index += 1
-            if self._last_index >= len(self.downloading):
-                self._last_index = 0
-            self.running = True
+            with self.index.get_lock():
+                self.index.value += 1
+            self.print_progress()
 
-        Timer(2, self.print_progress).start()
+        Timer(2, self.print_daemon).start()
 
     def download_progress(self, id, dic):
         try:
@@ -107,7 +123,7 @@ class Downloader:
             down = dic.get('downloaded_bytes', -1)
             if down != -1:
                 message += ', size is %.1lfMB' % (float(down) / (10 ** 6))
-            writeln('[' + color('INFO', 'blue') + '] ' + message)
+            writeln('[' + color('DOWN', 'green') + '] ' + message)
             self.queue.pop(id)
             self.downloading.remove(id)
         elif dic['status'] == 'downloading':
@@ -119,6 +135,8 @@ class Downloader:
             dic['total_bytes'] = total
             dic['name'] = name
             self.queue[id] = dic
+
+        self.print_progress()
 
     def download(self, name, url, id):
         self.queue[id] = {

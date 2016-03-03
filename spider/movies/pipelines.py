@@ -7,9 +7,12 @@
 
 import codecs
 import json
+import shutil
 from datetime import datetime
 from urlparse import urlparse
+
 import movies.download as download
+
 from .output import writeln, color
 
 
@@ -40,6 +43,10 @@ class JsonWithEncodingPipeline(object):
         self.count = 0
         self.video_count = 0
         self.downloader = download.Downloader()
+        try:
+            shutil.rmtree('video')
+        except:
+            pass
 
     def open_spider(self, spider):
         now = str(datetime.now()).split('.')[0].replace(' ', '_').replace(':', '.')

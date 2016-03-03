@@ -9,12 +9,25 @@ Currently supported:
 
 ## Usage
 
+`youtube-dl` (https://github.com/rg3/youtube-dl) is required. First install by
+``` shell
+pip install youtube-dl
+```
+If requirements are satisfied, then
 ``` shell
 git clone https://github.com/huzecong/film-spider
 cd film-spider/spider
-scrapy crawl youku # crawl for Youku
-scrapy crawl m1905 # crawl for M1905
+scrapy crawl youku -L ERROR # crawl for Youku
+scrapy crawl m1905 -L ERROR # crawl for M1905
 ```
+
+## Preferences
+
+Preferences are currently hard-coded. Some preferences that you might be interested in are:
+
+- **Download format**: In `download.py`, change `Downloader.options['format']`. Format should be legal `youtube-dl` format selection grammar (see https://github.com/rg3/youtube-dl#format-selection). Default is `'worst'`, standing for "worst quality (roughly 480P in the case of Youku)".
+- **No. of download processes**: In `multi_queue.py`, change `MultitaskQueue.MAX_PROC`. Default is `4`.
+- **Download path**: In `download.py`, find `Downloader.start_download` method, change `cur_option['outtmpl']`. Path should be legal `youtube-dl` output template grammar (see https://github.com/rg3/youtube-dl#output-template). Default is `'video/' + str(dic['id']) + '/' + str(dic['id']) + r'.%(ext)s'`, which will save the video to `video/<id>/<id>.<title>.<part>.<extension>`.
 
 ## Output format
 
@@ -64,8 +77,7 @@ For the **Youku spider**, JSON objects contain the following keys:
 
 If `videoURL` exists for a film, its worst-quality version is downloaded using `youtube-dl`. Video is saved to `video/<id>.<file format>`.
 
-## TODO
+## Known issues
 
-- Implement parallel downloading mechanism.
-- Optimize console output.
-- Concatenate downloaded videos (issue confirmed for Youku videos)
+- Youku video parts are not concatenated.
+- When downloading long videos on Youku, only a part could be downloaded. This issue is due to `youtube-dl` incompetence and I currently can do nothing about it.

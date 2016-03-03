@@ -1,3 +1,4 @@
+from multiprocessing import Lock
 from sys import stdout
 
 
@@ -17,21 +18,35 @@ class Output:
 
     last_refresh = ''
 
+    lock = Lock()
+
     @staticmethod
     def refresh(s):
+        Output.lock.acquire()
         stdout.write(Output.CLEAR_LINE + s)
+        stdout.flush()
         Output.last_refresh = s
+        Output.lock.release()
 
     @staticmethod
     def writeln(s):
-        stdout.write(Output.CLEAR_LINE + s + '\n')
-        refresh(Output.last_refresh)
+        Output.lock.acquire()
+        stdout.write(Output.CLEAR_LINE + s + '\n' + Output.last_refresh)
+        stdout.flush()
+        Output.lock.release()
 
     @staticmethod
     def color(s, col):
         return Output.COLOR_CODE[col.lower()] + s + Output.RESET_CODE
 
+    @staticmethod
+    def length(s):
+        ret = len(s)
+        ret -= 9 * (s.count('\033') // 2)
+        return ret
+
 
 refresh = Output.refresh
 writeln = Output.writeln
 color = Output.color
+length = Output.length

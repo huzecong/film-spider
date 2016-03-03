@@ -14,7 +14,7 @@ class YoukuListSpider(scrapy.Spider):
         self.start_urls = ['http://www.youku.com/v_olist/c_96.html']
 
     def parse(self, response):
-        writeln('[' + color('INFO', 'blue') + '] Parsing link: ' + response.url)
+        writeln('[' + color('SPIDER', 'blue') + '] Parsing link: ' + response.url)
 
         films = response.xpath('//div[@id="listofficial"]/descendant::div[contains(@class, "yk-col3")]')
         for film in films:
@@ -54,8 +54,9 @@ class YoukuListSpider(scrapy.Spider):
             desc = response.xpath('//div[contains(@class, "detail")]/span[@class="short"]/text()').extract()
         item['description'] = ''.join(map(lambda x: x.strip(), desc))
 
-        item['rating'] = float(
-            info.xpath('descendant::li[contains(@class, "rate")]/span/span/em[@class="num"]/text()')[0].extract())
+        rate = info.xpath('descendant::li[contains(@class, "rate")]/span/span/em[@class="num"]/text()')
+        if rate:
+            item['rating'] = float(rate[0].extract())
         extract('playCount', 'span[@class="play"]/text()')
         extract('commentCount', 'span[@class="comment"]/em/text()')
         extract('likeCount', 'span[@class="increm"]/text()')

@@ -5,7 +5,7 @@ from multiprocessing import Process
 
 class MultitaskQueue:
     def __init__(self, func):
-        self.MAX_PROC = 8
+        self.MAX_PROC = 4
 
         self.queue = multiprocessing.Queue()
         self.pool = []

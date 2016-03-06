@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 from functools import partial
 from multiprocessing import Manager, Lock, Value
@@ -32,6 +33,8 @@ class Downloader:
         self.multi = MultitaskQueue(self.start_download)
         self.status = 0
         Timer(0.5, self.print_daemon).start()
+        
+        self.FNULL = open(os.devnull, 'w')
 
     options = {
         'format': 'flv',
@@ -41,16 +44,30 @@ class Downloader:
     def start_download(self, dic):
         writeln('[' + color('DOWN', 'cyan') + '] Starting download of %s from %s, saving as ID %d'
                 % (dic['name'], dic['url'], dic['id']))
-        cur_option = self.options
-        cur_option['progress_hooks'] = [partial(self.download_progress, dic['id'])]
-        cur_option['outtmpl'] = 'video/' + str(dic['id']) + '/' + str(dic['id']) + r'.%(title)s-%(id)s.%(ext)s'
-        downloader = youtube_dl.YoutubeDL(cur_option)
+        # cur_option = self.options
+        # cur_option['progress_hooks'] = [partial(self.download_progress, dic['id'])]
+        # cur_option['outtmpl'] = 'video/' + str(dic['id']) + '/' + str(dic['id']) + r'.%(title)s-%(id)s.%(ext)s'
+        # downloader = youtube_dl.YoutubeDL(cur_option)
+        # try:
+        #     downloader.download([dic['url']])
+        #     self.download_progress(dic['id'], {'status': 'complete'})
+        # except youtube_dl.DownloadError as e:
+        #     writeln('[' + color('ERROR', 'red') + '] youtube_dl error for %s: ' % dic['name'] + e.message)
+        #     self.download_progress(dic['id'], {'status': 'error'})
+        self.download_progress(dic['id'], {'status': 'downloading'})
+        outpath = 'video/' + str(dic['id']) + '/'
         try:
-            downloader.download([dic['url']])
-            self.download_progress(dic['id'], {'status': 'complete'})
-        except youtube_dl.DownloadError as e:
-            writeln('[' + color('ERROR', 'red') + '] youtube_dl error for %s: ' % dic['name'] + e.message)
+            os.makedirs(outpath)
+        except:
+            pass
+        log = open(outpath + 'log.txt', 'w')
+        subprocess.call(["you-get", "-o", outpath, dic['url']], stdout=log, stderr=subprocess.STDOUT)
+        log.close()
+        log = open(outpath + 'log.txt', 'r')
+        if ' '.join(log.readlines()).find('error') != -1:
             self.download_progress(dic['id'], {'status': 'error'})
+        else:
+            self.download_progress(dic['id'], {'status': 'complete'})
 
     def print_progress(self):
         self.print_lock.acquire()
@@ -157,7 +174,7 @@ class Downloader:
             dic['done_part'] = done_part
             total = 0
             for x in ['total_bytes', 'total_bytes_estimate']:
-                if dic[x] is not None:
+                if x in dic and dic[x] is not None:
                     total = dic[x]
                     break
             dic['total_bytes'] = total

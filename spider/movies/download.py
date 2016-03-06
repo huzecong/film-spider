@@ -61,10 +61,11 @@ class Downloader:
         except:
             pass
         log = open(outpath + 'log.txt', 'w')
-        subprocess.call(["you-get", "-o", outpath, dic['url']], stdout=log, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(["you-get", dic['url']], stdout=log, stderr=subprocess.STDOUT, cwd=outpath)
+        retcode = process.wait()
         log.close()
         log = open(outpath + 'log.txt', 'r')
-        if ' '.join(log.readlines()).find('error') != -1:
+        if retcode != 0 or ' '.join(log.readlines()).find('error') != -1:
             self.download_progress(dic['id'], {'status': 'error'})
         else:
             self.download_progress(dic['id'], {'status': 'complete'})

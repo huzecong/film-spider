@@ -11,7 +11,9 @@ class YoukuListSpider(scrapy.Spider):
 
     def __init__(self, **kwargs):
         super(YoukuListSpider, self).__init__(**kwargs)
-        self.start_urls = ['http://www.youku.com/v_olist/c_96.html']
+        self.start_urls = \
+            [r'http://www.youku.com/v_olist/c_96_a_%E5%A4%A7%E9%99%86_u_1_pt_1_s_1_d_1_r_' + str(year) + '.html'
+             for year in [2016, 2015, 2014, 2013, 2012, 2011, 2010, 2000, 1990, 1980, 1970, -1969]]
 
     def parse(self, response):
         writeln('[' + color('SPIDER', 'blue') + '] Parsing link: ' + response.url)
@@ -68,7 +70,17 @@ class YoukuListSpider(scrapy.Spider):
             button = response.xpath('//ul[@class="baseaction"]/li/a[contains(@class, "btnplayposi")]')
         if button:
             item['videoURL'] = button.xpath('@href')[0].extract()
+            request = scrapy.Request(item['videoURL'], self.get_full_movie)
+            request.meta['item'] = item
+            yield request
         else:
             writeln('[' + color('IGNORE', 'magenta') + '] ' + item['title'] + ' has no video link')
+            yield item
 
+    def get_full_movie(self, response):
+        side_list = response.css('.listBox .mvitems .item a')
+        item = response.meta['item']
+        if side_list:
+            js = side_list[-1].xpath("span/@onclick").extract()[0]
+            item['videoURL'] = js.split('location=\'')[1].split('\';return')[0]
         yield item

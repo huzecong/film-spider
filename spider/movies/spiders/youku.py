@@ -38,7 +38,8 @@ class YoukuListSpider(scrapy.Spider):
         def extract(attrib, xpath):
             result = info.xpath('descendant::' + xpath).extract()
             if result:
-                item[attrib] = map(lambda x: x.strip(), result)
+                presort = [x for x in map(lambda x: x.strip(), result) if x]
+                item[attrib] = list(set(presort))
 
         item['title'] = response.xpath('//h1[@class="title"]/span[@class="name"]/text()')[0].extract()
         alias = info.xpath('descendant::span[@class="alias"]/@title')
